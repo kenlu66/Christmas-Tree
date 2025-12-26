@@ -16,40 +16,40 @@ import { MathUtils } from 'three';
 import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
 
-// --- 动态生成照片列表 (top.jpg + 1.jpg 到 31.jpg) ---
-const TOTAL_NUMBERED_PHOTOS = 31;
-// 修改：将 top.jpg 加入到数组开头
+// --- Dynamically generate photo list (top.jpg + 1.jpg to 20.jpg) ---
+const TOTAL_NUMBERED_PHOTOS = 20; // Increased from 15 to support 5 more photos
+// Note: top.jpg is added to the beginning of the array
 const bodyPhotoPaths = [
   '/photos/top.jpg',
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg`)
 ];
 
-// --- 视觉配置 ---
+// --- Visual Configuration ---
 const CONFIG = {
   colors: {
-    emerald: '#004225', // 纯正祖母绿
+    emerald: '#004225', // Pure emerald green
     gold: '#FFD700',
     silver: '#ECEFF1',
     red: '#D32F2F',
     green: '#2E7D32',
-    white: '#FFFFFF',   // 纯白色
+    white: '#FFFFFF',   // Pure white
     warmLight: '#FFD54F',
-    lights: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'], // 彩灯
-    // 拍立得边框颜色池 (复古柔和色系)
+    lights: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'], // Fairy lights
+    // Polaroid border color palette (vintage soft tones)
     borders: ['#FFFAF0', '#F0E68C', '#E6E6FA', '#FFB6C1', '#98FB98', '#87CEFA', '#FFDAB9'],
-    // 圣诞元素颜色
+    // Christmas element colors
     giftColors: ['#D32F2F', '#FFD700', '#1976D2', '#2E7D32'],
     candyColors: ['#FF0000', '#FFFFFF']
   },
   counts: {
-    foliage: 15000,
-    ornaments: 300,   // 拍立得照片数量
-    elements: 200,    // 圣诞元素数量
-    lights: 400       // 彩灯数量
+    foliage: 10000,   // Reduced from 15000 for better performance
+    ornaments: 150,   // Reduced from 300 for better performance (number of polaroid photos)
+    elements: 100,    // Reduced from 200 for better performance (number of Christmas elements)
+    lights: 250       // Reduced from 400 for better performance (number of fairy lights)
   },
-  tree: { height: 22, radius: 9 }, // 树体尺寸
+  tree: { height: 33, radius: 14 }, // Tree dimensions (increased from 22/9 to make tree bigger)
   photos: {
-    // top 属性不再需要，因为已经移入 body
+    // top property no longer needed, as it's been moved into body
     body: bodyPhotoPaths
   }
 };
@@ -142,7 +142,15 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       const targetPos = new THREE.Vector3(currentRadius * Math.cos(theta), y, currentRadius * Math.sin(theta));
 
       const isBig = Math.random() < 0.2;
-      const baseScale = isBig ? 2.2 : 0.8 + Math.random() * 0.6;
+      const baseScale = isBig ? 3.3 : 1.2 + Math.random() * 0.9; // Increased from 2.2/0.8-1.4 to 3.3/1.2-2.1 for larger photos
+      
+      // Make photos smaller at the top of the tree
+      // normalizedY ranges from 0 (bottom) to 1 (top)
+      const normalizedY = (y + (h/2)) / h;
+      // Scale factor: 1.0 at bottom, 0.5 at top (photos at top are 50% smaller)
+      const heightScaleFactor = 1.0 - (normalizedY * 0.5);
+      const finalScale = baseScale * heightScaleFactor;
+      
       const weight = 0.8 + Math.random() * 1.2;
       const borderColor = CONFIG.colors.borders[Math.floor(Math.random() * CONFIG.colors.borders.length)];
 
@@ -154,7 +162,7 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       const chaosRotation = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
 
       return {
-        chaosPos, targetPos, scale: baseScale, weight,
+        chaosPos, targetPos, scale: finalScale, weight,
         textureIndex: i % textures.length,
         borderColor,
         currentPos: chaosPos.clone(),
@@ -199,7 +207,7 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
     <group ref={groupRef}>
       {data.map((obj, i) => (
         <group key={i} scale={[obj.scale, obj.scale, obj.scale]} rotation={state === 'CHAOS' ? obj.chaosRotation : [0,0,0]}>
-          {/* 正面 */}
+          {/* Front side */}
           <group position={[0, 0, 0.015]}>
             <mesh geometry={photoGeometry}>
               <meshStandardMaterial
@@ -213,7 +221,7 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
               <meshStandardMaterial color={obj.borderColor} roughness={0.9} metalness={0} side={THREE.FrontSide} />
             </mesh>
           </group>
-          {/* 背面 */}
+          {/* Back side */}
           <group position={[0, 0, -0.015]} rotation={[0, Math.PI, 0]}>
             <mesh geometry={photoGeometry}>
               <meshStandardMaterial
@@ -241,6 +249,35 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   const boxGeometry = useMemo(() => new THREE.BoxGeometry(0.8, 0.8, 0.8), []);
   const sphereGeometry = useMemo(() => new THREE.SphereGeometry(0.5, 16, 16), []);
   const caneGeometry = useMemo(() => new THREE.CylinderGeometry(0.15, 0.15, 1.2, 8), []);
+  const planeGeometry = useMemo(() => new THREE.PlaneGeometry(1, 1), []); // For image-based decorations like Hello Kitty
+  
+  // Custom decoration images - add as many as you want!
+  // Place your images in: public/decorations/
+  // Add more image paths to this array to include them
+  const customDecorationPaths = [
+    // Duplicate Hello Kitty images to make them appear more frequently
+    '/decorations/hello-kitty.png',
+    '/decorations/hello-kitty.png',
+    '/decorations/hello-kitty.png',
+    '/decorations/hello-kitty2.png',
+    '/decorations/hello-kitty2.png',
+    '/decorations/hello-kitty2.png',
+    '/decorations/hello-kitty3.png',
+    '/decorations/hello-kitty3.png',
+    '/decorations/hello-kitty3.png',
+    '/decorations/hello-kitty4.png',
+    '/decorations/hello-kitty4.png',
+    '/decorations/hello-kitty4.png',
+    '/decorations/hello-kitty5.png',
+    '/decorations/hello-kitty5.png',
+    '/decorations/hello-kitty5.png',
+    // Add more images here, for example:
+    // '/decorations/my-character.png',
+    // '/decorations/another-image.jpg',
+  ];
+  
+  // Load all custom decoration textures
+  const customDecorationTextures = useTexture(customDecorationPaths);
 
   const data = useMemo(() => {
     return new Array(count).fill(0).map(() => {
@@ -253,16 +290,23 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
       const targetPos = new THREE.Vector3(currentRadius * Math.cos(theta), y, currentRadius * Math.sin(theta));
 
-      const type = Math.floor(Math.random() * 3);
-      let color; let scale = 1;
+      // Now supports 4 types: 0=box, 1=sphere, 2=cane, 3=image (Hello Kitty, etc.)
+      const type = Math.floor(Math.random() * 4);
+      let color; let scale = 1; let textureIndex = 0;
       if (type === 0) { color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; scale = 0.8 + Math.random() * 0.4; }
       else if (type === 1) { color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; scale = 0.6 + Math.random() * 0.4; }
-      else { color = Math.random() > 0.5 ? CONFIG.colors.red : CONFIG.colors.white; scale = 0.7 + Math.random() * 0.3; }
+      else if (type === 2) { color = Math.random() > 0.5 ? CONFIG.colors.red : CONFIG.colors.white; scale = 0.7 + Math.random() * 0.3; }
+      else { 
+        color = CONFIG.colors.white; 
+        scale = (0.8 + Math.random() * 0.4) * 3; // Type 3: image-based decoration (3x bigger for Hello Kitty)
+        // Randomly select from available custom decoration textures
+        textureIndex = customDecorationTextures.length > 0 ? Math.floor(Math.random() * customDecorationTextures.length) : 0;
+      }
 
       const rotationSpeed = { x: (Math.random()-0.5)*2.0, y: (Math.random()-0.5)*2.0, z: (Math.random()-0.5)*2.0 };
-      return { type, chaosPos, targetPos, color, scale, currentPos: chaosPos.clone(), chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed };
+      return { type, chaosPos, targetPos, color, scale, textureIndex, currentPos: chaosPos.clone(), chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed };
     });
-  }, [boxGeometry, sphereGeometry, caneGeometry]);
+  }, [boxGeometry, sphereGeometry, caneGeometry, planeGeometry, customDecorationTextures]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -280,10 +324,35 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   return (
     <group ref={groupRef}>
       {data.map((obj, i) => {
-        let geometry; if (obj.type === 0) geometry = boxGeometry; else if (obj.type === 1) geometry = sphereGeometry; else geometry = caneGeometry;
-        return ( <mesh key={i} scale={[obj.scale, obj.scale, obj.scale]} geometry={geometry} rotation={obj.chaosRotation}>
+        let geometry; 
+        if (obj.type === 0) geometry = boxGeometry; 
+        else if (obj.type === 1) geometry = sphereGeometry; 
+        else if (obj.type === 2) geometry = caneGeometry;
+        else geometry = planeGeometry; // Type 3: image-based decoration
+        
+        // For image-based decorations (type 3), use texture if available
+        const isImageType = obj.type === 3;
+        const selectedTexture = isImageType && customDecorationTextures.length > 0 
+          ? customDecorationTextures[obj.textureIndex] 
+          : null;
+        const material = isImageType && selectedTexture ? (
+          <meshStandardMaterial 
+            map={selectedTexture} 
+            transparent 
+            side={THREE.DoubleSide}
+            emissive={CONFIG.colors.white} 
+            emissiveMap={selectedTexture}
+            emissiveIntensity={0.5}
+          />
+        ) : (
           <meshStandardMaterial color={obj.color} roughness={0.3} metalness={0.4} emissive={obj.color} emissiveIntensity={0.2} />
-        </mesh> )})}
+        );
+        
+        return ( 
+          <mesh key={i} scale={[obj.scale, obj.scale, obj.scale]} geometry={geometry} rotation={obj.chaosRotation}>
+            {material}
+          </mesh> 
+        )})}
     </group>
   );
 };
@@ -330,6 +399,68 @@ const FairyLights = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
+// --- Component: Snow Effect ---
+const Snow = () => {
+  const snowCount = 2000;
+  const snowRef = useRef<THREE.Points>(null);
+  
+  const { positions, velocities } = useMemo(() => {
+    const positions = new Float32Array(snowCount * 3);
+    const velocities = new Float32Array(snowCount);
+    
+    for (let i = 0; i < snowCount; i++) {
+      // Random starting positions across a wide area
+      positions[i * 3] = (Math.random() - 0.5) * 200; // x
+      positions[i * 3 + 1] = Math.random() * 100 + 50; // y (start above)
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 200; // z
+      
+      // Random fall speed
+      velocities[i] = 0.5 + Math.random() * 1.5;
+    }
+    
+    return { positions, velocities };
+  }, []);
+  
+  useFrame((_, delta) => {
+    if (!snowRef.current) return;
+    
+    const positions = snowRef.current.geometry.attributes.position.array as Float32Array;
+    
+    for (let i = 0; i < snowCount; i++) {
+      // Move snowflake down
+      positions[i * 3 + 1] -= velocities[i] * delta * 10;
+      
+      // Add slight horizontal drift
+      positions[i * 3] += Math.sin(positions[i * 3 + 1] * 0.01) * delta * 2;
+      
+      // Reset if below ground
+      if (positions[i * 3 + 1] < -50) {
+        positions[i * 3] = (Math.random() - 0.5) * 200;
+        positions[i * 3 + 1] = 100;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+      }
+    }
+    
+    snowRef.current.geometry.attributes.position.needsUpdate = true;
+  });
+  
+  return (
+    <points ref={snowRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.8}
+        color="#FFFFFF"
+        transparent
+        opacity={0.9}
+        sizeAttenuation={true}
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+};
+
 // --- Component: Top Star (No Photo, Pure Gold 3D Star) ---
 const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   const groupRef = useRef<THREE.Group>(null);
@@ -348,16 +479,16 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
   const starGeometry = useMemo(() => {
     return new THREE.ExtrudeGeometry(starShape, {
-      depth: 0.4, // 增加一点厚度
+      depth: 0.4, // Add some thickness
       bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: 3,
     });
   }, [starShape]);
 
-  // 纯金材质
+  // Pure gold material
   const goldMaterial = useMemo(() => new THREE.MeshStandardMaterial({
     color: CONFIG.colors.gold,
     emissive: CONFIG.colors.gold,
-    emissiveIntensity: 1.5, // 适中亮度，既发光又有质感
+    emissiveIntensity: 1.5, // Moderate brightness, both glowing and textured
     roughness: 0.1,
     metalness: 1.0,
   }), []);
@@ -392,7 +523,7 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 8, 60]} fov={45} />
-      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} maxPolarAngle={Math.PI / 1.7} />
+      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.6} maxPolarAngle={Math.PI / 1.7} />
 
       <color attach="background" args={['#000300']} />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
@@ -403,7 +534,7 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
       <pointLight position={[-30, 10, -30]} intensity={50} color={CONFIG.colors.gold} />
       <pointLight position={[0, -20, 10]} intensity={30} color="#ffffff" />
 
-      <group position={[0, -6, 0]}>
+      <group position={[0, -2, 0]}>
         <Foliage state={sceneState} />
         <Suspense fallback={null}>
            <PhotoOrnaments state={sceneState} />
@@ -413,6 +544,9 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
         </Suspense>
         <Sparkles count={600} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
       </group>
+      
+      {/* Snow Effect */}
+      <Snow />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={1.5} radius={0.5} mipmapBlur />
@@ -483,7 +617,7 @@ const GestureController = ({ onGesture, onMove, onStatus, debugMode }: any) => {
                  if (debugMode) onStatus(`DETECTED: ${name}`);
               }
               if (results.landmarks.length > 0) {
-                const speed = (0.5 - results.landmarks[0][0].x) * 0.15;
+                const speed = (0.5 - results.landmarks[0][0].x) * 0.3; // Increased from 0.15 to 0.3 for faster rotation
                 onMove(Math.abs(speed) > 0.01 ? speed : 0);
               }
             } else { onMove(0); if (debugMode) onStatus("AI READY: NO HAND"); }
@@ -519,8 +653,24 @@ export default function GrandTreeApp() {
       </div>
       <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onStatus={setAiStatus} debugMode={debugMode} />
 
+      {/* UI - Title */}
+      <div style={{ position: 'absolute', top: '30px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, textAlign: 'center' }}>
+        <h1 style={{ 
+          fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive', 
+          fontSize: '48px', 
+          fontWeight: 'bold', 
+          color: '#FFD700', 
+          margin: 0,
+          textShadow: '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5)',
+          letterSpacing: '2px',
+          userSelect: 'none'
+        }}>
+          Merry Christmas Vicky 🎄
+        </h1>
+      </div>
+
       {/* UI - Stats */}
-      <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
+      <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive', userSelect: 'none' }}>
         <div style={{ marginBottom: '15px' }}>
           <p style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Memories</p>
           <p style={{ fontSize: '24px', color: '#FFD700', fontWeight: 'bold', margin: 0 }}>
@@ -537,16 +687,16 @@ export default function GrandTreeApp() {
 
       {/* UI - Buttons */}
       <div style={{ position: 'absolute', bottom: '30px', right: '40px', zIndex: 10, display: 'flex', gap: '10px' }}>
-        <button onClick={() => setDebugMode(!debugMode)} style={{ padding: '12px 15px', backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: debugMode ? '#000' : '#FFD700', fontFamily: 'sans-serif', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+        <button onClick={() => setDebugMode(!debugMode)} style={{ padding: '12px 15px', backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: debugMode ? '#000' : '#FFD700', fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
            {debugMode ? 'HIDE DEBUG' : '🛠 DEBUG'}
         </button>
-        <button onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} style={{ padding: '12px 30px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255, 215, 0, 0.5)', color: '#FFD700', fontFamily: 'serif', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+        <button onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} style={{ padding: '12px 30px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255, 215, 0, 0.5)', color: '#FFD700', fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
            {sceneState === 'CHAOS' ? 'Assemble Tree' : 'Disperse'}
         </button>
       </div>
 
       {/* UI - AI Status */}
-      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
+      <div style={{ position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive' }}>
         {aiStatus}
       </div>
     </div>
